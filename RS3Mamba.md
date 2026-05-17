@@ -1,7 +1,8 @@
 # RS3Mamba 电线课题 — 训练 / 测试命令速查
 
 > 本文件只放可直接复制的命令。环境见 [`SETUP.md`](SETUP.md)，项目介绍与结果表见 [`README.md`](README.md)。  
-> **GitHub：** [https://github.com/zsyyywm/my_SR3MAmba](https://github.com/zsyyywm/my_SR3MAmba)
+> **GitHub：** [https://github.com/zsyyywm/my_SR3MAmba](https://github.com/zsyyywm/my_SR3MAmba)  
+> **克隆后**：先按 [`SETUP.md`](SETUP.md) **§0** 安装环境、预训练与数据，再执行下文训练/测试。
 
 ---
 

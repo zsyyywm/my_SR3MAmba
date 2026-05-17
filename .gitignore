@@ -1,0 +1,37 @@
+# —— 电线实验（RS3Mamba）推送规则：不要提交数据、训练/测试产物与大权重 ——
+# 本文件保证「git add .」时不会把 checkpoint、seg pkl、预训练 .pth 打进仓库。
+
+# 训练 / 测试输出（体积大）
+data/
+
+# 预训练 backbone（需按 SETUP 自行下载）
+RS3Mamba/pretrain/*.pth
+**/*.pth
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+*.egg
+dist/
+build/
+.venv/
+venv/
+ENV/
+
+# Jupyter / IDE
+.ipynb_checkpoints/
+.vscode/
+.idea/
+
+# 日志与临时文件
+*.log
+*.log.json
+*.pkl
+*.pkl.json
+.DS_Store
+.env

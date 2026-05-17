@@ -5,6 +5,18 @@
 
 ---
 
+## 0. 从 GitHub 克隆后的操作顺序
+
+1. `git clone https://github.com/zsyyywm/my_SR3MAmba.git`（目录名以远端为准），`cd` 到**工程根**（含 `tools/`、`RS3Mamba/`、`README.md` 的目录）。
+2. 按 **§1** 创建并激活 Conda 环境，安装 PyTorch 与 `mamba_ssm` 等依赖。
+3.（可选）按 **§3** 将 `vmamba_tiny_e292.pth` 放到 `RS3Mamba/pretrain/`，不做则从零训练。
+4. 按 **§2** 放置或指向 DataA / DataB / DataC 数据集。
+5. 按 **§4** 自检通过后，打开 [`RS3Mamba.md`](RS3Mamba.md) 执行训练、`test_wire.py`、`visualize_wire_test.py`。
+
+维护者上传代码时务必阅读 **§5**，确保 **`tools/` + `RS3Mamba/` 全量源码与三份 Markdown、`.gitignore` 齐备**，且不要把 `data/`、权重 `.pth` 推上去。
+
+---
+
 ## 工程根
 
 ```bash
@@ -115,26 +127,51 @@ PY
 
 ---
 
-## 5. 克隆本仓库与推送到 GitHub
+## 5. 克隆、推送与「必含清单」
 
-在**本地或服务器**克隆（若仓库已初始化并有内容）：
+仓库根目录应包含：`.gitignore`、`README.md`、`RS3Mamba.md`、`SETUP.md`、`tools/`（电线入口）、`RS3Mamba/`（`model/RS3Mamba.py`、`model/SwinUMamba.py`、`utils_Mamba.py` 等**完整子目录**）。  
+
+**不要提交**：`data/`（训练/测试输出）、`RS3Mamba/pretrain/*.pth`、`*.pkl`、数据集目录；这些已由根目录 **`.gitignore`** 忽略（推送前仍建议 `git status` 过目）。
+
+### 5.1 他人克隆运行
 
 ```bash
 git clone https://github.com/zsyyywm/my_SR3MAmba.git
 cd my_SR3MAmba
+# 然后按本文 §1–§4 与 RS3Mamba.md
 ```
 
-若你希望把当前 `SSRS-main` 工程树作为**首次**推送内容，在工程根目录（含 `tools/`、`RS3Mamba/`、`README.md` 等）执行：
+### 5.2 推送前推荐 `git add`（避免漏文件）
+
+在**工程根**执行（路径随你本机修改）：
 
 ```bash
-cd /path/to/SSRS-main/SSRS-main   # 以你的实际路径为准
+cd /path/to/SSRS-main/SSRS-main
+
+git add \
+  .gitignore \
+  README.md RS3Mamba.md SETUP.md \
+  tools/ \
+  RS3Mamba/
+
+git status
+# 若暂存区出现 data/、*.pth，应去掉：git reset HEAD data RS3Mamba/pretrain 等
+```
+
+说明：电线实验**仅依赖**上述目录；上游 SSRS 仓库中其它子项目（如 `MFNet/`）不必为复现本课题而提交，除非你希望镜像完整上游。
+
+### 5.3 首次建库并推送（无历史时）
+
+```bash
+cd /path/to/SSRS-main/SSRS-main
 git init
 git checkout -b main
 git remote add origin https://github.com/zsyyywm/my_SR3MAmba.git
-# 大文件：可选添加 .gitignore 排除 data/、*.pth、__pycache__/ 等后再提交
-git add README.md RS3Mamba.md SETUP.md tools/ RS3Mamba/
+git add .gitignore README.md RS3Mamba.md SETUP.md tools/ RS3Mamba/
 git commit -m "Wire binary segmentation workflow for RS3Mamba (DataA/B/C)"
 git push -u origin main
 ```
 
-若 GitHub 上**已有 README/提交**，先 `git pull origin main --allow-unrelated-histories` 再合并，或改用新分支发 PR。已安装 **GitHub CLI** 时亦可用：`gh auth login` 后按提示操作。
+### 5.4 远端已有提交时
+
+先 `git pull origin main --allow-unrelated-histories`（或 rebase）再合并推送；也可用新分支发 PR。已安装 **GitHub CLI** 时：`gh auth login` 后按提示操作。

@@ -85,9 +85,11 @@ Documents:
 
 | Document | Purpose |
 |----------|---------|
-| [`SETUP.md`](SETUP.md) | Environment, dependencies, data paths, optional pretrained weights. |
-| [`RS3Mamba.md`](RS3Mamba.md) | Copy-ready training and testing commands. |
-| `README.md` | Project overview and result table. |
+| [`SETUP.md`](SETUP.md) | 环境、依赖、数据、可选预训练、**从克隆到推 GitHub 的清单**（避免漏交源码或误传 `data/`、权重）。 |
+| [`RS3Mamba.md`](RS3Mamba.md) | 可直接复制的训练、测试、可视化命令。 |
+| `README.md` | 项目说明与结果表。 |
+
+从任意机器复现：**先 `git clone`，再严格按 [`SETUP.md`](SETUP.md) §0 → §4**，再执行下方命令。
 
 Task settings:
 
