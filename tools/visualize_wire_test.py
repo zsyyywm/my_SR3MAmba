@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-RS3Mamba wire 测试集逐张可视化与像素级汇总指标（对齐参考 test.py 的目录与报告形态）。
+RS3Mamba wire 测试集逐张可视化与像素级汇总指标。
 
 推理：双类 logits -> softmax 类 1 概率 -> 阈值（默认 0.5），与 train_wire / test_wire 一致。
 预处理：与 WireDataset 一致（RGB resize BILINEAR，mask NEAREST，归一化 MEAN/STD）。
+可视化：原图上实色替换 TP/FN/FP 像素，保存至 tp_fn_fp_replace/。
 """
 from __future__ import annotations
 
@@ -26,23 +27,6 @@ from wire_paths import (checkpoints1_dir, checkpoints2_dir, ensure_wire_dataset,
                         image_size_for_scheme)
 
 EPS = 1e-7
-
-
-def add_title_bar(img: np.ndarray, text: str, height: int = 35) -> np.ndarray:
-    """在原图上方叠黑色标题栏与白色文字（BGR）。"""
-    h, w, _ = img.shape
-    bar = np.zeros((height, w, 3), dtype=np.uint8)
-    cv2.putText(
-        bar,
-        text,
-        (10, height - 10),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        0.7,
-        (255, 255, 255),
-        2,
-        cv2.LINE_AA,
-    )
-    return np.vstack([bar, img])
 
 
 def calculate_binary_metrics(pred: np.ndarray, label: np.ndarray):
@@ -171,12 +155,11 @@ def predict_foreground_prob(
     return prob.cpu().numpy().astype(np.float32)
 
 
-def save_overlap_red(img_bgr: np.ndarray, pred_map: np.ndarray,
-                     label_arr: np.ndarray, save_path: str, alpha: float = 0.65):
-    """TP 区域红色半透明叠加（BGR 红 = 0,0,255）。"""
+def save_tp_fn_fp_replace(img_bgr: np.ndarray, pred_map: np.ndarray,
+                          label_arr: np.ndarray, save_path: str):
+    """在原图上直接替换 TP/FN/FP 像素（BGR 实色，TN 保持原图）。"""
     pred_map = pred_map.astype(np.uint8)
     label_arr = label_arr.astype(np.uint8)
-
     if pred_map.shape != label_arr.shape:
         pred_map = cv2.resize(
             pred_map,
@@ -189,52 +172,14 @@ def save_overlap_red(img_bgr: np.ndarray, pred_map: np.ndarray,
             (label_arr.shape[1], label_arr.shape[0]),
             interpolation=cv2.INTER_LINEAR,
         )
-    overlap = (pred_map == 1) & (label_arr == 1)
-    vis = img_bgr.copy()
-    red_layer = np.zeros_like(img_bgr, dtype=np.uint8)
-    red_layer[:, :] = (0, 0, 255)
-    blended = cv2.addWeighted(img_bgr, 1 - alpha, red_layer, alpha, 0)
-    vis[overlap] = blended[overlap]
-    cv2.imwrite(save_path, vis)
-
-
-def save_tp_fp_fn_tn_pixels(pred_map: np.ndarray, label_arr: np.ndarray,
-                            save_path: str):
-    """BGR：TP 绿、FP 红、FN 蓝、TN 黑。"""
-    pred_map = pred_map.astype(np.uint8)
-    label_arr = label_arr.astype(np.uint8)
-    if pred_map.shape != label_arr.shape:
-        pred_map = cv2.resize(
-            pred_map,
-            (label_arr.shape[1], label_arr.shape[0]),
-            interpolation=cv2.INTER_NEAREST,
-        )
     tp = (pred_map == 1) & (label_arr == 1)
-    fp = (pred_map == 1) & (label_arr == 0)
     fn = (pred_map == 0) & (label_arr == 1)
-    tn = (pred_map == 0) & (label_arr == 0)
-    h, w = label_arr.shape
-    color_map = np.zeros((h, w, 3), dtype=np.uint8)
-    color_map[tn] = (0, 0, 0)
-    color_map[tp] = (0, 255, 0)
-    color_map[fp] = (0, 0, 255)
-    color_map[fn] = (255, 0, 0)
-    cv2.imwrite(save_path, color_map)
-
-
-def save_color_legend(save_dir: str):
-    legend = np.ones((160, 430, 3), dtype=np.uint8) * 255
-    font = cv2.FONT_HERSHEY_SIMPLEX
-    items = [
-        ('TP: pred=1, gt=1', (0, 255, 0), 30),
-        ('FP: pred=1, gt=0', (0, 0, 255), 65),
-        ('FN: pred=0, gt=1', (255, 0, 0), 100),
-        ('TN: pred=0, gt=0', (0, 0, 0), 135),
-    ]
-    for text, color, y in items:
-        cv2.rectangle(legend, (20, y - 20), (55, y + 5), color, -1)
-        cv2.putText(legend, text, (70, y), font, 0.65, (0, 0, 0), 2, cv2.LINE_AA)
-    cv2.imwrite(osp.join(save_dir, 'color_legend.png'), legend)
+    fp = (pred_map == 1) & (label_arr == 0)
+    vis = img_bgr.copy()
+    vis[tp] = (0, 0, 255)
+    vis[fn] = (255, 0, 0)
+    vis[fp] = (0, 255, 0)
+    cv2.imwrite(save_path, vis)
 
 
 def resolve_run_dir(train_run: str) -> str:
@@ -330,12 +275,8 @@ def main():
     device = torch.device(args.device if torch.cuda.is_available() else 'cpu')
 
     os.makedirs(predict_save_dir, exist_ok=True)
-    pred_mask_dir = osp.join(predict_save_dir, '01_pred_mask')
-    gt_mask_dir = osp.join(predict_save_dir, '02_gt_mask')
-    overlap_red_dir = osp.join(predict_save_dir, '03_overlap_red')
-    tp_fp_fn_tn_dir = osp.join(predict_save_dir, '04_tp_fp_fn_tn_pixels')
-    for d in (pred_mask_dir, gt_mask_dir, overlap_red_dir, tp_fp_fn_tn_dir):
-        os.makedirs(d, exist_ok=True)
+    tp_fn_fp_replace_dir = osp.join(predict_save_dir, 'tp_fn_fp_replace')
+    os.makedirs(tp_fn_fp_replace_dir, exist_ok=True)
 
     model_args = SimpleNamespace(
         timm_pretrained=args.timm_pretrained,
@@ -348,10 +289,8 @@ def main():
         return
 
     net.eval()
-    save_color_legend(tp_fp_fn_tn_dir)
 
     pairs = list_pairs(data_root, 'test')
-    img_exts = ('.jpg', '.png', '.jpeg', '.bmp', '.tif', '.tiff')
 
     print('=' * 60)
     print(f'test pairs:    {len(pairs)} (image/mask from list_pairs)')
@@ -385,22 +324,6 @@ def main():
 
         pred_map = (pred_prob > args.threshold).astype(np.uint8)
         img_bgr = load_display_bgr(img_path, image_size)
-
-        mask_gray = (pred_map * 255).astype(np.uint8)
-        mask_bgr = cv2.cvtColor(mask_gray, cv2.COLOR_GRAY2BGR)
-        overlay = np.zeros_like(img_bgr)
-        overlay[pred_map == 1] = [0, 255, 0]
-        vis_overlay = cv2.addWeighted(img_bgr, 0.6, overlay, 0.4, 0)
-
-        hstack = np.hstack([
-            add_title_bar(img_bgr, 'Original Image'),
-            add_title_bar(mask_bgr, 'Predicted Mask'),
-            add_title_bar(vis_overlay, 'Segmentation Result'),
-        ])
-        cv2.imwrite(
-            osp.join(predict_save_dir, f'{base_name}_comparison.png'), hstack)
-        cv2.imwrite(osp.join(predict_save_dir, f'{base_name}.png'), mask_gray)
-
         label_arr = load_label_binary(mask_path, image_size,
                                       mask_255_as_foreground)
         valid_img += 1
@@ -420,24 +343,11 @@ def main():
         total_fn += fn
         total_tn += tn
 
-        cv2.imwrite(
-            osp.join(pred_mask_dir, f'{base_name}_pred.png'),
-            (pred_for_m * 255).astype(np.uint8),
-        )
-        cv2.imwrite(
-            osp.join(gt_mask_dir, f'{base_name}_gt.png'),
-            (label_arr * 255).astype(np.uint8),
-        )
-        save_overlap_red(
+        save_tp_fn_fp_replace(
             img_bgr,
             pred_for_m,
             label_arr,
-            osp.join(overlap_red_dir, f'{base_name}_overlap_red.png'),
-        )
-        save_tp_fp_fn_tn_pixels(
-            pred_for_m,
-            label_arr,
-            osp.join(tp_fp_fn_tn_dir, f'{base_name}_tp_fp_fn_tn.png'),
+            osp.join(tp_fn_fp_replace_dir, f'{base_name}_tp_fn_fp_replace.png'),
         )
 
         print(

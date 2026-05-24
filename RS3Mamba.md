@@ -136,10 +136,29 @@ README_result_row.md
 python tools/test_wire.py 20260515153000A --update-readme
 ```
 
-### 测试集逐张可视化（参考 test.py 目录结构）
+### 测试集逐张可视化
 
-对 `test` 分割下每张图导出：`{base}.png`、`{base}_comparison.png`、`01_pred_mask/`、`02_gt_mask/`、`03_overlap_red/`、`04_tp_fp_fn_tn_pixels/`（含 `color_legend.png`）。  
-推理为 **softmax 类 1 概率 + 阈值**，预处理与 `WireDataset` 一致；指标为**全测试集像素**汇总后再算 IoU / P / R / F1 / aAcc。
+对 `test` 分割下每张图只导出 **一张** TP/FN/FP 叠加图，保存至 `tp_fn_fp_replace/`：
+
+```text
+data/checkpoints2/vis_<时间><A|B|C>/
+├── tp_fn_fp_replace/
+│   └── {base_name}_tp_fn_fp_replace.png
+└── vis_meta.json
+```
+
+**可视化规则**（在原图上实色替换，不使用半透明 / `addWeighted`；TN 保持原图不变）：
+
+| 类别 | OpenCV BGR | 条件 |
+|------|------------|------|
+| TP | 红 `(0, 0, 255)` | pred=1 且 gt=1 |
+| FN | 蓝 `(255, 0, 0)` | pred=0 且 gt=1 |
+| FP | 绿 `(0, 255, 0)` | pred=1 且 gt=0 |
+| TN | 原图 | pred=0 且 gt=0 |
+
+推理为 **softmax 类 1 概率 + 阈值（默认 0.5）**，预处理与 `WireDataset` 一致；指标为逐图统计 TP/FP/FN/TN 后**全测试集像素汇总**再算 IoU / P / R / F1 / aAcc（禁止逐图平均 IoU）。终端仍逐图打印 TP、FP、FN、TN、pred_pixels、gt_pixels、prob_min/max/mean。
+
+> **需要 GPU**：RS3Mamba 依赖 `mamba_ssm` 的 CUDA 算子，无卡实例会报 `Expected u.is_cuda() to be true`。
 
 ```bash
 python tools/visualize_wire_test.py --train-run 20260515153000A

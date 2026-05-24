@@ -45,7 +45,7 @@
 |------|------|
 | `tools/train_wire.py` | 训练入口（`--wire-scheme dataa|datab|datac`） |
 | `tools/test_wire.py` | 测试入口（传入训练产物的文件夹名） |
-| `tools/visualize_wire_test.py` | 测试集逐张 PNG 与指标汇总 |
+| `tools/visualize_wire_test.py` | 测试集逐张 TP/FN/FP 可视化（`tp_fn_fp_replace/`）与像素级指标汇总 |
 | `tools/wire_paths.py` | 数据集根目录解析 |
 | `RS3Mamba/` | RS³Mamba 模型与相关脚本（本课题所用结构） |
 
@@ -53,7 +53,8 @@
 
 ```text
 data/checkpoints1/<时间戳+A|B|C>/   # 训练：权重、日志、验证曲线等
-data/checkpoints2/<时间戳+A|B|C>/ 及 vis_* /   # 测试与可视化输出
+data/checkpoints2/<时间戳+A|B|C>/   # test_wire.py 测试输出
+data/checkpoints2/vis_<时间><A|B|C>/ # visualize_wire_test.py：tp_fn_fp_replace/ + vis_meta.json
 ```
 
 ---
